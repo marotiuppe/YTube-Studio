@@ -121,12 +121,17 @@ class SplitRequest(BaseModel):
 class MixRequest(BaseModel):
     file_paths: List[str]
     output_format: Optional[str] = "mp4"
+    video_volume: Optional[float] = 1.0
+    audio_volume: Optional[float] = 1.0
 
 # Background Worker Functions
 def run_download_job(job_id: str, url: str, media_type: str, quality: Optional[str]):
-    JobService.update_job(job_id, status="processing", progress=20.0)
+    JobService.update_job(job_id, status="processing", progress=5.0)
     try:
-        res = YouTubeService.download_media(url, media_type=media_type, quality=quality)
+        def on_progress(pct: float):
+            JobService.update_job(job_id, status="processing", progress=round(pct, 1))
+
+        res = YouTubeService.download_media(url, media_type=media_type, quality=quality, progress_callback=on_progress)
         JobService.update_job(job_id, status="completed", progress=100.0, result=res)
     except Exception as e:
         JobService.update_job(job_id, status="failed", error=str(e))
@@ -147,27 +152,64 @@ def run_split_job(job_id: str, file_path: str, part_count: int, total_duration: 
     except Exception as e:
         JobService.update_job(job_id, status="failed", error=str(e))
 
-def run_mix_job(job_id: str, file_paths: List[str], output_format: Optional[str]):
+def run_mix_job(job_id: str, file_paths: List[str], output_format: Optional[str], video_volume: Optional[float] = 1.0, audio_volume: Optional[float] = 1.0):
     JobService.update_job(job_id, status="processing", progress=20.0)
     try:
-        res = VideoService.mix_media(file_paths, output_format=output_format)
+        res = VideoService.mix_media(file_paths, output_format=output_format, video_volume=video_volume, audio_volume=audio_volume)
         JobService.update_job(job_id, status="completed", progress=100.0, result=res)
     except Exception as e:
         JobService.update_job(job_id, status="failed", error=str(e))
 
 def run_playlist_download_job(job_id: str, url: str, media_type: str, quality: Optional[str], max_videos: int):
-    JobService.update_job(job_id, status="processing", progress=20.0)
+    JobService.update_job(job_id, status="processing", progress=5.0)
     try:
-        res = YouTubeService.download_playlist(url, media_type=media_type, quality=quality, max_videos=max_videos)
+        def on_progress(pct: float):
+            JobService.update_job(job_id, status="processing", progress=round(pct, 1))
+
+        res = YouTubeService.download_playlist(url, media_type=media_type, quality=quality, max_videos=max_videos, progress_callback=on_progress)
         JobService.update_job(job_id, status="completed", progress=100.0, result=res)
     except Exception as e:
         JobService.update_job(job_id, status="failed", error=str(e))
 
-@app.get("/", response_class=HTMLResponse)
+from fastapi.responses import HTMLResponse, FileResponse, RedirectResponse
+
+@app.get("/")
 async def read_root():
-    """Serve single-page frontend application."""
-    index_path = os.path.join(TEMPLATES_DIR, "index.html")
-    return FileResponse(index_path)
+    """Redirect root to download.html by default."""
+    return RedirectResponse(url="/download.html")
+
+@app.get("/download", response_class=HTMLResponse)
+@app.get("/download.html", response_class=HTMLResponse)
+@app.get("/index.html", response_class=HTMLResponse)
+async def read_download():
+    """Serve Downloader HTML page."""
+    return FileResponse(os.path.join(TEMPLATES_DIR, "download.html"))
+
+@app.get("/cutter", response_class=HTMLResponse)
+@app.get("/cutter.html", response_class=HTMLResponse)
+@app.get("/trim", response_class=HTMLResponse)
+@app.get("/trim.html", response_class=HTMLResponse)
+async def read_cutter():
+    """Serve Video Trimmer / Cutter HTML page."""
+    return FileResponse(os.path.join(TEMPLATES_DIR, "cutter.html"))
+
+@app.get("/split", response_class=HTMLResponse)
+@app.get("/split.html", response_class=HTMLResponse)
+async def read_split():
+    """Serve Video Splitter HTML page."""
+    return FileResponse(os.path.join(TEMPLATES_DIR, "split.html"))
+
+@app.get("/mix", response_class=HTMLResponse)
+@app.get("/mix.html", response_class=HTMLResponse)
+async def read_mix():
+    """Serve Video & Audio Mixer HTML page."""
+    return FileResponse(os.path.join(TEMPLATES_DIR, "mix.html"))
+
+@app.get("/playlist", response_class=HTMLResponse)
+@app.get("/playlist.html", response_class=HTMLResponse)
+async def read_playlist():
+    """Serve Playlist Downloader HTML page."""
+    return FileResponse(os.path.join(TEMPLATES_DIR, "playlist.html"))
 
 @app.post("/api/info")
 async def get_info(payload: InfoRequest):
@@ -248,7 +290,9 @@ async def mix_videos(payload: MixRequest, background_tasks: BackgroundTasks):
         run_mix_job,
         job_id,
         payload.file_paths,
-        payload.output_format
+        payload.output_format,
+        payload.video_volume,
+        payload.audio_volume
     )
     return {"success": True, "job_id": job_id, "message": "Mixing task dispatched successfully."}
 
@@ -281,10 +325,23 @@ async def get_service_worker():
 
 @app.get("/api/download-file")
 async def get_downloaded_file(path: str):
-    """Stream or download processed file directly from server disk."""
-    if not os.path.exists(path):
+    """Stream or download processed file directly from server disk safely."""
+    abs_path = os.path.abspath(path)
+    allowed_dirs = [
+        os.path.abspath(os.path.join(BASE_DIR, "..", "downloads")),
+        os.path.abspath(os.path.join(BASE_DIR, "downloads")),
+        os.path.abspath(STATIC_DIR)
+    ]
+    
+    is_allowed = any(abs_path.startswith(allowed_dir) for allowed_dir in allowed_dirs)
+    if not is_allowed:
+        logger.warning(f"Unauthorized path download attempt blocked: {abs_path}")
+        raise HTTPException(status_code=403, detail="Access denied. Requested path is outside authorized storage.")
+
+    if not os.path.exists(abs_path) or not os.path.isfile(abs_path):
         raise HTTPException(status_code=404, detail="Requested file does not exist.")
-    return FileResponse(path, filename=os.path.basename(path))
+    
+    return FileResponse(abs_path, filename=os.path.basename(abs_path))
 
 
 

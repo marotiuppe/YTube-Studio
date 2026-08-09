@@ -22,24 +22,51 @@ class YouTubeService:
         return VideoService.is_ffmpeg_available()
 
     @classmethod
+    def _get_base_ydl_opts(cls) -> Dict[str, Any]:
+        """Base options for yt-dlp to bypass YouTube bot detection on cloud servers (e.g. Render)."""
+        opts: Dict[str, Any] = {
+            'quiet': True,
+            'no_warnings': True,
+            'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, Gecko) Chrome/122.0.0.0 Safari/537.36',
+            'extractor_args': {
+                'youtube': {
+                    'player_client': ['mweb', 'ios', 'android', 'web'],
+                }
+            }
+        }
+
+        cookies_path = os.environ.get('YOUTUBE_COOKIES_PATH') or os.environ.get('COOKIES_PATH')
+        if cookies_path and os.path.isfile(cookies_path):
+            opts['cookiefile'] = cookies_path
+        elif os.environ.get('YOUTUBE_COOKIES'):
+            temp_cookies = os.path.join(DOWNLOAD_DIR, 'youtube_cookies.txt')
+            try:
+                with open(temp_cookies, 'w', encoding='utf-8') as f:
+                    f.write(os.environ['YOUTUBE_COOKIES'])
+                opts['cookiefile'] = temp_cookies
+            except Exception as e:
+                logger.warning(f"Failed to save YOUTUBE_COOKIES env var: {e}")
+
+        return opts
+
+    @classmethod
     def get_video_info(cls, url_or_query: str) -> Dict[str, Any]:
-        """Extract metadata and available formats for a given YouTube URL or text search query."""
-        cache_key = url_or_query.strip().lower()
+        """Extract metadata and available formats for a given YouTube URL or text search query directly from YouTube."""
+        cache_key = url_or_query.lower().strip()
         if cache_key in cls._info_cache:
-            logger.info(f"Serving cached YouTube info for: {url_or_query}")
+            logger.info(f"Returning cached metadata for: {url_or_query}")
             return cls._info_cache[cache_key]
 
         is_url = url_or_query.startswith(('http://', 'https://')) or 'youtu' in url_or_query
-        target = url_or_query if is_url else f"ytsearch25:{url_or_query}"
+        target = url_or_query if is_url else f"ytsearch12:{url_or_query}"
 
-        ydl_opts = {
-            'quiet': True,
-            'no_warnings': True,
+        ydl_opts = cls._get_base_ydl_opts()
+        ydl_opts.update({
             'skip_download': True,
             'getcomments': False,
-            'extract_flat': True,
-            'socket_timeout': 5,
-        }
+            'socket_timeout': 10,
+        })
+
         try:
             with yt_dlp.YoutubeDL(ydl_opts) as ydl: 
                 info = ydl.extract_info(target, download=False)
@@ -131,12 +158,15 @@ class YouTubeService:
                     v_id = entry.get('id')
                     v_title = entry.get('title')
                     if v_id and v_title and v_title != '[Video unavailable]':
+                        thumb = entry.get('thumbnail')
+                        if not thumb or isinstance(thumb, list):
+                            thumb = f"https://i.ytimg.com/vi/{v_id}/mqdefault.jpg"
                         related_videos.append({
                             'id': v_id,
                             'title': v_title,
                             'uploader': entry.get('uploader') or entry.get('channel') or 'YouTube Channel',
                             'duration': entry.get('duration'),
-                            'thumbnail': f"https://i.ytimg.com/vi/{v_id}/mqdefault.jpg",
+                            'thumbnail': thumb,
                             'url': f"https://www.youtube.com/watch?v={v_id}"
                         })
 
@@ -153,7 +183,7 @@ class YouTubeService:
                                 'extract_flat': 'in_playlist'
                             }
                             with yt_dlp.YoutubeDL(rel_opts) as rel_ydl:
-                                rel_info = rel_ydl.extract_info(f"ytsearch20:{fallback_query}", download=False)
+                                rel_info = rel_ydl.extract_info(f"ytsearch10:{fallback_query}", download=False)
                                 for item in (rel_info.get('entries') or []):
                                     v_id = item.get('id')
                                     if v_id and v_id != info.get('id') and item.get('title'):
@@ -198,6 +228,7 @@ class YouTubeService:
                     'related_videos': related_videos,
                     'comments': yt_comments
                 }
+                cache_key = url_or_query.lower()
                 cls._info_cache[cache_key] = res_data
                 if res_data.get('id'):
                     cls._info_cache[res_data['id'].lower()] = res_data
@@ -210,25 +241,35 @@ class YouTubeService:
             raise RuntimeError(err_str.replace("ERROR: [youtube] ", "").strip())
 
 
-    @staticmethod
+    @classmethod
     def download_media(
+        cls,
         url: str,
         media_type: str = "video",
-        quality: Optional[str] = None
+        quality: Optional[str] = None,
+        progress_callback: Optional[Any] = None
     ) -> Dict[str, Any]:
         """Download video or audio using yt-dlp."""
         out_template = os.path.join(DOWNLOAD_DIR, '%(title)s_%(id)s.%(ext)s')
         ffmpeg_bin = VideoService.get_ffmpeg_executable()
 
-        ydl_opts: Dict[str, Any] = {
-            'outtmpl': out_template,
-            'quiet': True,
-            'no_warnings': True,
-            'restrictfilenames': True,
-            'ffmpeg_location': ffmpeg_bin
-        }
+        def _ydl_progress_hook(d):
+            if progress_callback and d.get('status') == 'downloading':
+                total = d.get('total_bytes') or d.get('total_bytes_estimate') or 0
+                downloaded = d.get('downloaded_bytes') or 0
+                if total > 0:
+                    percentage = min(99.0, max(5.0, (downloaded / total) * 100.0))
+                    progress_callback(percentage)
 
-        has_ffmpeg = YouTubeService.is_ffmpeg_available()
+        ydl_opts = cls._get_base_ydl_opts()
+        ydl_opts.update({
+            'outtmpl': out_template,
+            'restrictfilenames': True,
+            'ffmpeg_location': ffmpeg_bin,
+            'progress_hooks': [_ydl_progress_hook] if progress_callback else []
+        })
+
+        has_ffmpeg = cls.is_ffmpeg_available()
 
         if media_type == "audio":
             ydl_opts['format'] = 'bestaudio/best'
@@ -285,16 +326,15 @@ class YouTubeService:
             logger.error(f"Error downloading media from {url}: {e}")
             raise RuntimeError(msg)
 
-    @staticmethod
-    def get_playlist_info(url: str, max_videos: int = 10) -> Dict[str, Any]:
+    @classmethod
+    def get_playlist_info(cls, url: str, max_videos: int = 10) -> Dict[str, Any]:
         """Extract metadata for a YouTube playlist up to max_videos limit (max 10)."""
         limit = min(max_videos, 10)
-        ydl_opts = {
-            'quiet': True,
-            'no_warnings': True,
+        ydl_opts = cls._get_base_ydl_opts()
+        ydl_opts.update({
             'extract_flat': 'in_playlist',
             'playlistend': limit
-        }
+        })
         try:
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 info = ydl.extract_info(url, download=False)
@@ -326,15 +366,23 @@ class YouTubeService:
         url: str,
         media_type: str = "video",
         quality: Optional[str] = None,
-        max_videos: int = 10
+        max_videos: int = 10,
+        progress_callback: Optional[Any] = None
     ) -> List[Dict[str, Any]]:
         """Download videos in a playlist up to max_videos limit (max 10)."""
         playlist_info = YouTubeService.get_playlist_info(url, max_videos=max_videos)
         download_results = []
+        items = playlist_info.get('items', [])
+        total_items = len(items)
         
-        for item in playlist_info.get('items', []):
+        for idx, item in enumerate(items):
+            def item_progress(item_pct):
+                if progress_callback and total_items > 0:
+                    overall = ((idx + (item_pct / 100.0)) / total_items) * 100.0
+                    progress_callback(min(99.0, max(5.0, overall)))
+
             try:
-                res = YouTubeService.download_media(item['url'], media_type=media_type, quality=quality)
+                res = YouTubeService.download_media(item['url'], media_type=media_type, quality=quality, progress_callback=item_progress)
                 download_results.append(res)
             except Exception as e:
                 logger.error(f"Failed to download playlist item {item['title']}: {e}")

@@ -164,15 +164,29 @@ class VideoService:
             output_filename = f"{name}_part_{i+1}_of_{part_count}{ext}"
             output_path = os.path.join(EDITED_DIR, output_filename)
             
-            command = [
-                'ffmpeg',
-                '-y',
-                '-ss', str(start_sec),
-                '-to', str(end_sec),
-                '-i', input_path,
-                *codec_args,
-                output_path
-            ]
+            # Fast seek (-ss before -i) + stream copy (-c copy) when accurate=False
+            if accurate:
+                command = [
+                    'ffmpeg',
+                    '-y',
+                    '-ss', str(start_sec),
+                    '-to', str(end_sec),
+                    '-i', input_path,
+                    '-c:v', 'libx264',
+                    '-c:a', 'copy',
+                    output_path
+                ]
+            else:
+                command = [
+                    'ffmpeg',
+                    '-y',
+                    '-ss', str(start_sec),
+                    '-to', str(end_sec),
+                    '-i', input_path,
+                    '-c', 'copy',
+                    '-avoid_negative_ts', 'make_zero',
+                    output_path
+                ]
             
             VideoService._run_ffmpeg_command(command)
 
@@ -204,7 +218,9 @@ class VideoService:
     @staticmethod
     def mix_media(
         file_paths: List[str],
-        output_format: Optional[str] = "mp4"
+        output_format: Optional[str] = "mp4",
+        video_volume: Optional[float] = 1.0,
+        audio_volume: Optional[float] = 1.0
     ) -> Dict[str, Any]:
         """Mix/concatenate multiple media files into a single continuous video or audio file."""
         if not file_paths or len(file_paths) < 2:

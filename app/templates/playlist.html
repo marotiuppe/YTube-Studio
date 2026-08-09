@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YTube Studio — Playlist Downloader</title>
+    <link rel="icon" href="/static/img/logo.png" type="image/png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link rel="stylesheet" href="/static/css/style.css?v=2.0">
+</head>
+<body class="yt-dark-theme">
+    <div class="app-container">
+        <header class="yt-navbar">
+            <div class="yt-brand-section" style="display: flex; align-items: center; gap: 0.75rem;">
+                <button onclick="if(document.referrer && document.referrer.includes(window.location.host)) { history.back(); } else { window.location.href='/download.html'; }" class="yt-icon-btn" title="Back" style="background: var(--bg-hover); border-radius: 50%; width: 36px; height: 36px; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; border: none; color: var(--text-primary);">
+                    <i data-lucide="arrow-left"></i>
+                </button>
+                <a href="/download.html" class="yt-logo-group" style="text-decoration:none; color:inherit;">
+                    <img src="/static/img/logo.png" alt="YTube Studio Logo" class="yt-logo-img" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                    <div class="brand-icon" style="display:none;">
+                        <i data-lucide="play" class="yt-play-icon"></i>
+                    </div>
+                    <span class="yt-brand-name">YTube Studio</span>
+                    <span class="yt-country-code">IN</span>
+                </a>
+            </div>
+        </header>
+
+        <div class="app-layout-wrapper">
+            <aside class="yt-mini-sidebar">
+                <a href="/download.html" class="mini-nav-item" title="Home / Download">
+                    <i data-lucide="home"></i>
+                </a>
+                <a href="/cutter.html" class="mini-nav-item" title="Video Cutter / Trimmer">
+                    <i data-lucide="scissors"></i>
+                </a>
+                <a href="/split.html" class="mini-nav-item" title="Video Splitter">
+                    <i data-lucide="grid"></i>
+                </a>
+                <a href="/mix.html" class="mini-nav-item" title="Video & Audio Mixer">
+                    <i data-lucide="layers"></i>
+                </a>
+                <a href="/playlist.html" class="mini-nav-item active" title="Playlist Batch">
+                    <i data-lucide="list-video"></i>
+                </a>
+            </aside>
+
+            <main class="main-content">
+                <div id="progress-container" class="progress-container hidden">
+                    <div class="progress-label">
+                        <span id="txt-progress-status">Downloading playlist...</span>
+                        <span id="txt-progress-percent">0%</span>
+                    </div>
+                    <div class="progress-track">
+                        <div id="progress-fill" class="progress-fill"></div>
+                    </div>
+                </div>
+
+                <section id="tab-playlist" class="tab-panel active">
+                    <div class="card">
+                        <div class="card-header-bar" style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem;">
+                            <div style="display: flex; align-items: center; gap: 0.75rem;">
+                                <button onclick="if(document.referrer && document.referrer.includes(window.location.host)) { history.back(); } else { window.location.href='/download.html'; }" class="yt-icon-btn" title="Go Back" style="background: var(--bg-hover); border-radius: 50%; width: 36px; height: 36px; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; border: none; color: var(--text-primary);">
+                                    <i data-lucide="arrow-left"></i>
+                                </button>
+                                <div>
+                                    <h2 style="margin:0;">YouTube Playlist Batch Downloader</h2>
+                                    <p class="subtitle" style="margin:0;">Enter any YouTube Playlist URL to fetch all videos in the queue and download them together.</p>
+                                </div>
+                            </div>
+                            <a href="/download.html" class="yt-pill-btn" style="text-decoration: none; display: inline-flex; align-items: center; gap: 0.5rem;">
+                                <i data-lucide="home"></i> Home
+                            </a>
+                        </div>
+
+                        <form id="form-playlist-fetch" class="search-form">
+                            <div class="yt-search-box">
+                                <input type="url" id="input-playlist-url" placeholder="Paste YouTube Playlist link (e.g. https://www.youtube.com/playlist?list=...)" required autocomplete="off">
+                                <button type="submit" id="btn-playlist-fetch" class="yt-search-btn" title="Fetch Playlist">
+                                    <i data-lucide="search"></i>
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <div id="loader-playlist-info" class="card loader-card hidden">
+                        <div class="spinner"></div>
+                        <p>Fetching playlist entries from YouTube...</p>
+                    </div>
+
+                    <div id="card-playlist-info" class="card hidden">
+                        <div class="playlist-header-row">
+                            <div>
+                                <h3 id="txt-playlist-title">Playlist Title</h3>
+                                <p id="txt-playlist-count" class="subtitle">0 items found</p>
+                            </div>
+                            <button id="btn-start-playlist-download" class="yt-download-btn">
+                                <i data-lucide="download"></i>
+                                <span>Download All Batch</span>
+                            </button>
+                        </div>
+
+                        <div id="container-playlist-items" class="playlist-items-grid"></div>
+                    </div>
+                </section>
+            </main>
+        </div>
+        <div id="toast-container" class="toast-container"></div>
+    </div>
+
+    <nav class="mobile-bottom-nav">
+        <a href="/download.html" class="mobile-nav-item" title="Home">
+            <i data-lucide="home"></i>
+        </a>
+        <a href="/cutter.html" class="mobile-nav-item" title="Trim">
+            <i data-lucide="scissors"></i>
+        </a>
+        <a href="/split.html" class="mobile-nav-item" title="Split">
+            <i data-lucide="grid"></i>
+        </a>
+        <a href="/mix.html" class="mobile-nav-item" title="Mixer">
+            <i data-lucide="layers"></i>
+        </a>
+        <a href="/playlist.html" class="mobile-nav-item active" title="Playlist">
+            <i data-lucide="list-video"></i>
+        </a>
+    </nav>
+
+    <script src="/static/js/common.js?v=2.0"></script>
+    <script src="/static/js/playlist.js?v=2.0"></script>
+    <script>lucide.createIcons();</script>
+</body>
+</html>

@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YTube Studio — Video Splitter</title>
+    <link rel="icon" href="/static/img/logo.png" type="image/png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link rel="stylesheet" href="/static/css/style.css?v=2.0">
+</head>
+<body class="yt-dark-theme">
+    <div class="app-container">
+        <header class="yt-navbar">
+            <div class="yt-brand-section" style="display: flex; align-items: center; gap: 0.75rem;">
+                <button onclick="if(document.referrer && document.referrer.includes(window.location.host)) { history.back(); } else { window.location.href='/download.html'; }" class="yt-icon-btn" title="Back" style="background: var(--bg-hover); border-radius: 50%; width: 36px; height: 36px; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; border: none; color: var(--text-primary);">
+                    <i data-lucide="arrow-left"></i>
+                </button>
+                <a href="/download.html" class="yt-logo-group" style="text-decoration:none; color:inherit;">
+                    <img src="/static/img/logo.png" alt="YTube Studio Logo" class="yt-logo-img" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                    <div class="brand-icon" style="display:none;">
+                        <i data-lucide="play" class="yt-play-icon"></i>
+                    </div>
+                    <span class="yt-brand-name">YTube Studio</span>
+                    <span class="yt-country-code">IN</span>
+                </a>
+            </div>
+        </header>
+
+        <div class="app-layout-wrapper">
+            <aside class="yt-mini-sidebar">
+                <a href="/download.html" class="mini-nav-item" title="Home / Download">
+                    <i data-lucide="home"></i>
+                </a>
+                <a href="/cutter.html" class="mini-nav-item" title="Video Cutter / Trimmer">
+                    <i data-lucide="scissors"></i>
+                </a>
+                <a href="/split.html" class="mini-nav-item active" title="Video Splitter">
+                    <i data-lucide="grid"></i>
+                </a>
+                <a href="/mix.html" class="mini-nav-item" title="Video & Audio Mixer">
+                    <i data-lucide="layers"></i>
+                </a>
+                <a href="/playlist.html" class="mini-nav-item" title="Playlist Batch">
+                    <i data-lucide="list-video"></i>
+                </a>
+            </aside>
+
+            <main class="main-content">
+                <!-- Full-Screen Center Overlay Loading Spinner -->
+                <div id="progress-container" class="modal-overlay hidden" style="z-index: 1000; background: rgba(15, 15, 20, 0.85); backdrop-filter: blur(8px);">
+                    <div class="card" style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1.2rem; padding: 2.5rem; max-width: 360px; text-align: center; border: 1px solid var(--border-color); box-shadow: 0 20px 50px rgba(0,0,0,0.5);">
+                        <div class="card-loading-spinner" style="width: 48px; height: 48px; border-width: 4px;"></div>
+                        <div>
+                            <h3 id="txt-progress-status" style="margin: 0 0 0.4rem 0; font-size: 1.1rem; color: var(--text-primary);">Splitting Video Parts...</h3>
+                            <span id="txt-progress-percent" style="font-size: 1.4rem; font-weight: 700; color: var(--brand-orange);">0%</span>
+                        </div>
+                        <div class="progress-track" style="width: 100%; height: 8px; background: rgba(255,255,255,0.1); border-radius: 4px; overflow: hidden;">
+                            <div id="progress-fill" class="progress-fill" style="height: 100%; width: 0%; background: var(--brand-orange); transition: width 0.2s ease;"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <section id="tab-splitter" class="tab-panel active">
+                    <div class="card splitter-card-container">
+                        <div class="tab-section-header" style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem;">
+                            <div style="display: flex; align-items: center; gap: 0.75rem;">
+                                <button onclick="if(document.referrer && document.referrer.includes(window.location.host)) { history.back(); } else { window.location.href='/download.html'; }" class="yt-icon-btn" title="Go Back" style="background: var(--bg-hover); border-radius: 50%; width: 36px; height: 36px; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; border: none; color: var(--text-primary);">
+                                    <i data-lucide="arrow-left"></i>
+                                </button>
+                                <div>
+                                    <h2 style="margin:0;"><i data-lucide="scissors" style="color: var(--brand-orange)"></i> YouTube Video Part Splitter</h2>
+                                    <p class="subtitle" style="margin:0;">Select a video from your library to split into equal segment parts automatically.</p>
+                                </div>
+                            </div>
+                            <a href="/download.html" class="yt-pill-btn" style="text-decoration: none; display: inline-flex; align-items: center; gap: 0.5rem;">
+                                <i data-lucide="home"></i> Home
+                            </a>
+                        </div>
+
+                        <div class="media-library-section">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.8rem;">
+                                <h3 style="margin: 0;">Select Downloaded Video to Split:</h3>
+                                <button type="button" id="btn-clear-split-history" class="yt-pill-btn" style="padding: 4px 12px; font-size: 0.78rem; background: rgba(255, 87, 34, 0.1); border: 1px solid rgba(255, 87, 34, 0.2); color: var(--brand-orange);">
+                                    <i data-lucide="trash-2" style="width: 14px; height: 14px;"></i> Clear Library
+                                </button>
+                            </div>
+                            <div id="container-split-media-list" class="media-library-grid">
+                                <p class="empty-library-msg">No downloaded videos yet. <a href="/download" style="color:var(--brand-orange)">Download a video first!</a></p>
+                            </div>
+                        </div>
+
+                        <div id="wrapper-split-workspace" class="splitter-workspace hidden">
+                            <div class="splitter-player-box">
+                                <video id="player-split-preview" controls class="media-preview-player"></video>
+                                <div class="splitter-info-bar">
+                                    <span id="txt-split-video-name" class="split-video-name">Loaded Video</span>
+                                    <span id="txt-split-video-duration" class="split-video-duration">Duration: --:--</span>
+                                </div>
+                            </div>
+
+                            <div class="splitter-controls-box">
+                                <form id="form-split-video" class="editor-form-compact">
+                                    <input type="hidden" id="input-split-filepath" required>
+                                    <input type="hidden" id="input-split-duration" required>
+                                    <input type="checkbox" id="chk-split-accurate" style="display:none" checked>
+
+                                    <div class="split-selector-card">
+                                        <label class="split-card-label">
+                                            <i data-lucide="layers" style="width:16px; height:16px; color: var(--brand-orange)"></i>
+                                            <span>Select Number of Equal Parts</span>
+                                        </label>
+                                        <div class="split-preset-pills" id="container-split-presets">
+                                            <button type="button" class="preset-pill active" data-parts="2">2 Parts</button>
+                                            <button type="button" class="preset-pill" data-parts="3">3 Parts</button>
+                                            <button type="button" class="preset-pill" data-parts="4">4 Parts</button>
+                                        </div>
+                                        <div class="stepper-wrapper">
+                                            <button type="button" id="btn-split-minus" class="btn-stepper" title="Decrease parts">&minus;</button>
+                                            <div class="stepper-input-box">
+                                                <input type="number" id="input-split-parts" min="2" max="20" value="2" required class="stepper-input">
+                                                <span class="stepper-unit">Parts</span>
+                                            </div>
+                                            <button type="button" id="btn-split-plus" class="btn-stepper" title="Increase parts">&plus;</button>
+                                        </div>
+                                    </div>
+
+                                    <div id="box-split-breakdown" class="split-breakdown-box">
+                                        <div class="breakdown-header">
+                                            <i data-lucide="sparkles" style="width:16px; height:16px; color: var(--brand-orange)"></i>
+                                            <span>Segment Preview Breakdown</span>
+                                        </div>
+                                        <p id="txt-split-breakdown-summary" class="breakdown-summary">Splitting video into 2 equal parts...</p>
+                                        <div id="container-split-segments" class="breakdown-segments-list"></div>
+                                    </div>
+
+                                    <div class="split-form-group">
+                                        <label for="select-split-format" class="split-card-label">
+                                            <i data-lucide="file-video" style="width:16px; height:16px; color: var(--brand-orange)"></i>
+                                            <span>Output Format:</span>
+                                        </label>
+                                        <select id="select-split-format" class="custom-select split-format-select">
+                                            <option value="mp4">MP4 Video (Standard H.264)</option>
+                                            <option value="webm">WebM Video (VP9)</option>
+                                            <option value="mkv">MKV Container</option>
+                                            <option value="mp3">MP3 Audio Stream</option>
+                                        </select>
+                                    </div>
+
+                                    <button type="submit" id="btn-execute-split" class="yt-download-btn btn-split-execute btn-full">
+                                        <i data-lucide="grid"></i>
+                                        <span>Split Video Parts</span>
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </main>
+        </div>
+        <div id="toast-container" class="toast-container"></div>
+    </div>
+
+    <nav class="mobile-bottom-nav">
+        <a href="/download.html" class="mobile-nav-item" title="Home">
+            <i data-lucide="home"></i>
+        </a>
+        <a href="/cutter.html" class="mobile-nav-item" title="Trim">
+            <i data-lucide="scissors"></i>
+        </a>
+        <a href="/split.html" class="mobile-nav-item active" title="Split">
+            <i data-lucide="grid"></i>
+        </a>
+        <a href="/mix.html" class="mobile-nav-item" title="Mixer">
+            <i data-lucide="layers"></i>
+        </a>
+        <a href="/playlist.html" class="mobile-nav-item" title="Playlist">
+            <i data-lucide="list-video"></i>
+        </a>
+    </nav>
+
+    <script src="/static/js/common.js?v=2.0"></script>
+    <script src="/static/js/split.js?v=2.0"></script>
+    <script>lucide.createIcons();</script>
+</body>
+</html>

@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YTube Studio — YouTube Video Downloader</title>
+    <meta name="description" content="YTube Studio is the ultimate all-in-one utility for creators to download web streams.">
+    
+    <!-- Favicon -->
+    <link rel="icon" href="/static/img/logo.png" type="image/png">
+
+    <!-- PWA Manifest & Mobile Meta -->
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#ff0000">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="YTube Studio">
+    <link rel="apple-touch-icon" href="/static/img/logo.png">
+    
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Icons (Lucide) -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    
+    <!-- App Styles -->
+    <link rel="stylesheet" href="/static/css/style.css?v=2.0">
+</head>
+<body class="yt-dark-theme">
+    <div class="app-container">
+        <!-- YouTube Top Navigation Bar -->
+        <header class="yt-navbar">
+            <div class="yt-brand-section">
+                <a href="/download.html" class="yt-logo-group" style="text-decoration:none; color:inherit;">
+                    <img src="/static/img/logo.png" alt="YTube Studio Logo" class="yt-logo-img" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                    <div class="brand-icon" style="display:none;">
+                        <i data-lucide="play" class="yt-play-icon"></i>
+                    </div>
+                    <span class="yt-brand-name">YTube Studio</span>
+                    <span class="yt-country-code">IN</span>
+                </a>
+            </div>
+
+            <div class="yt-search-center" id="yt-search-center">
+                <button id="btn-close-mobile-search" class="yt-icon-btn mobile-back-btn hidden" title="Back">
+                    <i data-lucide="arrow-left"></i>
+                </button>
+                <form id="form-fetch-info" class="yt-search-form">
+                    <div class="yt-search-box">
+                        <input type="text" id="input-yt-url" placeholder="Search or paste YouTube link..." autocomplete="off">
+                        <button type="submit" id="btn-fetch-info" class="yt-search-btn" title="Search">
+                            <i data-lucide="search"></i>
+                        </button>
+                    </div>
+                </form>
+                <div id="container-recent-chips" class="recent-chips-bar hidden"></div>
+            </div>
+
+            <div class="yt-nav-actions">
+                <button id="btn-mobile-search-toggle" class="yt-icon-btn mobile-only-btn" title="Search">
+                    <i data-lucide="search"></i>
+                </button>
+                <button id="btn-pwa-install" class="yt-action-pill hidden">
+                    <i data-lucide="smartphone"></i> Install App
+                </button>
+            </div>
+        </header>
+
+        <!-- Main Application Layout -->
+        <div class="app-layout-wrapper">
+            <!-- Left Sidebar Navigation -->
+            <aside class="yt-mini-sidebar">
+                <a href="/download.html" class="mini-nav-item active" title="Home / Download">
+                    <i data-lucide="home"></i>
+                </a>
+                <a href="/cutter.html" class="mini-nav-item" title="Video Cutter / Trimmer">
+                    <i data-lucide="scissors"></i>
+                </a>
+                <a href="/split.html" class="mini-nav-item" title="Video Splitter">
+                    <i data-lucide="grid"></i>
+                </a>
+                <a href="/mix.html" class="mini-nav-item" title="Video & Audio Mixer">
+                    <i data-lucide="layers"></i>
+                </a>
+                <a href="/playlist.html" class="mini-nav-item" title="Playlist Batch">
+                    <i data-lucide="list-video"></i>
+                </a>
+            </aside>
+
+            <!-- Main Content Area -->
+            <main class="main-content">
+                <!-- Category Filter Carousel -->
+                <div class="category-carousel-wrapper">
+                    <button class="carousel-arrow-btn prev" id="btn-cat-prev" title="Previous categories">
+                        <i data-lucide="chevron-left"></i>
+                    </button>
+                    <div class="category-chips-nav" id="container-category-chips">
+                        <button class="cat-chip active" data-query="Trending">Trending</button>
+                        <button class="cat-chip" data-query="Trending Movie">Movie</button>
+                        <button class="cat-chip" data-query="Trending Music">Music</button>
+                        <button class="cat-chip" data-query="Trending Comedy">Comedy</button>
+                        <button class="cat-chip" data-query="Trending Live">Live</button>
+                        <button class="cat-chip" data-query="Trending Mixes">Mixes</button>
+                        <button class="cat-chip" data-query="Trending Animated films 4k">Animated films</button>
+                        <button class="cat-chip" data-query="Trending T-Series">T-Series</button>
+                        <button class="cat-chip" data-query="Trending cinema">cinema</button>
+                        <button class="cat-chip" data-query="Trending Indian pop music">Indian pop music</button>
+                        <button class="cat-chip" data-query="Trending Dubbing movies">Dubbing</button>
+                        <button class="cat-chip" data-query="Trending Romantic Music">Romantic Music</button>
+                        <button class="cat-chip" data-query="Trending Lessons">Lessons</button>
+                        <button class="cat-chip" data-query="saved">Saved</button>
+                    </div>
+                    <button class="carousel-arrow-btn next" id="btn-cat-next" title="Next categories">
+                        <i data-lucide="chevron-right"></i>
+                    </button>
+                </div>
+
+                <!-- Home Video Grid -->
+                <div id="container-home-grid" class="home-video-grid">
+                    <!-- Skeleton Card Placeholders (6 Cards while YouTube feed loads) -->
+                    <div class="skeleton-grid-placeholder hidden">
+                        <div class="skeleton-card-item"></div>
+                        <div class="skeleton-card-item"></div>
+                        <div class="skeleton-card-item"></div>
+                        <div class="skeleton-card-item"></div>
+                        <div class="skeleton-card-item"></div>
+                        <div class="skeleton-card-item"></div>
+                    </div>
+                </div>
+
+                <!-- Full-Screen Center Overlay Download Progress Popup -->
+                <div id="progress-container" class="modal-overlay hidden" style="z-index: 1000; background: rgba(15, 15, 20, 0.85); backdrop-filter: blur(8px);">
+                    <div class="card" style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1.2rem; padding: 2.5rem; max-width: 360px; text-align: center; border: 1px solid var(--border-color); box-shadow: 0 20px 50px rgba(0,0,0,0.5);">
+                        <div class="card-loading-spinner" style="width: 48px; height: 48px; border-width: 4px;"></div>
+                        <div>
+                            <h3 id="txt-progress-status" style="margin: 0 0 0.4rem 0; font-size: 1.1rem; color: var(--text-primary);">Downloading video...</h3>
+                            <span id="txt-progress-percent" style="font-size: 1.4rem; font-weight: 700; color: var(--brand-orange);">0%</span>
+                        </div>
+                        <div class="progress-track" style="width: 100%; height: 8px; background: rgba(255,255,255,0.1); border-radius: 4px; overflow: hidden;">
+                            <div id="progress-fill" class="progress-fill" style="height: 100%; width: 0%; background: var(--brand-orange); transition: width 0.2s ease;"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Skeleton Loader -->
+                <div id="loader-video-info" class="card skeleton-player-card hidden">
+                    <div class="video-layout-grid">
+                        <div class="video-main-display">
+                            <div class="skeleton-player-box">
+                                <div class="card-loading-spinner"></div>
+                                <span class="skeleton-loader-text">Fetching video from YouTube...</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Downloader Panel -->
+                <section id="tab-downloader" class="tab-panel active">
+                    <div id="card-video-info" class="card video-info-card hidden">
+                        <div class="video-layout-grid">
+                            <div class="video-main-display">
+                                <div class="thumbnail-wrapper full-width-player">
+                                    <iframe id="iframe-player" src="" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen class="hidden"></iframe>
+                                    <img id="img-thumbnail" src="" alt="YouTube Video Thumbnail">
+                                    <button id="btn-play-preview" class="play-overlay-btn" title="Play Video Preview">
+                                        <i data-lucide="play"></i>
+                                    </button>
+                                    <span id="badge-duration" class="duration-badge">00:00</span>
+                                </div>
+
+                                <div class="video-meta-block">
+                                    <h1 id="txt-video-title" class="video-main-title">Video Title Placeholder</h1>
+                                    
+                                    <div class="video-meta-bar">
+                                        <div class="channel-info">
+                                            <div class="channel-avatar-icon">
+                                                <i data-lucide="play-circle" style="color: var(--brand-orange); width: 24px; height: 24px;"></i>
+                                            </div>
+                                            <div class="channel-text">
+                                                <strong id="txt-uploader" class="channel-name">Channel Name</strong>
+                                                <div id="txt-subscribers" class="channel-subscribers-text">Subscribers</div>
+                                            </div>
+                                            <button class="yt-subscribe-btn">Subscribe</button>
+                                        </div>
+
+                                        <div class="yt-action-bar">
+                                            <div class="yt-like-dislike-pill">
+                                                <button id="btn-like-video" class="pill-left-btn" title="Like on YouTube">
+                                                    <i data-lucide="thumbs-up"></i>
+                                                    <span id="txt-like-count">Like</span>
+                                                </button>
+                                                <span class="pill-divider">|</span>
+                                                <button class="pill-right-btn" title="Dislike">
+                                                    <i data-lucide="thumbs-down"></i>
+                                                </button>
+                                            </div>
+
+                                            <button id="btn-open-download-modal" class="yt-pill-btn yt-download-pill-btn" title="Download Video">
+                                                <i data-lucide="download"></i>
+                                            </button>
+                                            <a href="/cutter.html" class="yt-pill-btn" title="Trim Video" style="text-decoration:none;">
+                                                <i data-lucide="scissors"></i>
+                                            </a>
+                                             <button id="btn-quick-split" class="yt-pill-btn" title="Split Video Parts">
+                                                 <i data-lucide="grid"></i>
+                                             </button>
+                                            <button id="btn-save-video" class="yt-pill-btn" title="Save for Later">
+                                                <i data-lucide="bookmark"></i>
+                                                <span id="txt-save-status">Save</span>
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <div id="yt-description-box" class="yt-description-box">
+                                        <div class="description-header-stats">
+                                            <span id="txt-views-count">0 views</span>
+                                            <span id="txt-upload-date">Uploaded recently</span>
+                                        </div>
+                                        <div id="txt-video-description" class="description-text collapsed">
+                                            No description available.
+                                        </div>
+                                        <button id="btn-toggle-description" class="btn-more-desc">...more</button>
+                                    </div>
+
+                                    <div class="comments-section">
+                                        <div class="comments-header">
+                                            <h3 id="txt-comments-count">0 Comments</h3>
+                                        </div>
+                                        <form id="form-add-comment" class="add-comment-form">
+                                            <div class="user-avatar-mini"><i data-lucide="user"></i></div>
+                                            <div class="comment-input-group">
+                                                <input type="text" id="input-comment-text" placeholder="Add a comment..." required autocomplete="off">
+                                                <div class="comment-form-actions">
+                                                    <button type="submit" id="btn-submit-comment" class="yt-download-btn btn-comment-submit">Comment</button>
+                                                </div>
+                                            </div>
+                                        </form>
+                                        <div id="container-comments-list" class="comments-list"></div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <aside class="more-videos-sidebar">
+                                <div class="sidebar-header">
+                                    <i data-lucide="list-video"></i>
+                                    <h3>Up next</h3>
+                                </div>
+                                <div id="container-related-videos" class="related-videos-list"></div>
+                            </aside>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Download Quality Selection Modal -->
+                <div id="modal-quality-select" class="modal-overlay hidden">
+                    <div class="modal-card">
+                        <div class="modal-header">
+                            <h3>Choose Quality & Format</h3>
+                            <button id="btn-close-quality-modal" class="btn-icon-close">&times;</button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="media-type-toggle">
+                                <label class="toggle-option active">
+                                    <input type="radio" name="media_type" value="video" id="radio-media-video" checked>
+                                    <i data-lucide="video"></i> Video (MP4)
+                                </label>
+                                <label class="toggle-option">
+                                    <input type="radio" name="media_type" value="audio" id="radio-media-audio">
+                                    <i data-lucide="music"></i> Audio Only (MP3)
+                                </label>
+                            </div>
+                            <div class="quality-select-wrapper" id="wrapper-video-quality">
+                                <label for="select-video-quality">Quality:</label>
+                                <select id="select-video-quality" class="custom-select"></select>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button id="btn-start-download" class="yt-download-btn btn-full">
+                                <i data-lucide="download"></i>
+                                <span>Start Download</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+
+        <footer class="app-footer">
+            <div class="footer-container">
+                <div class="footer-bottom-row">
+                    <div class="footer-copyright">© 2026 <strong>YTube Studio</strong>. All rights reserved.</div>
+                </div>
+            </div>
+        </footer>
+        <div id="toast-container" class="toast-container"></div>
+    </div>
+
+    <!-- Mobile Bottom Navigation Bar -->
+    <nav class="mobile-bottom-nav">
+        <a href="/download.html" class="mobile-nav-item active" title="Home">
+            <i data-lucide="home"></i>
+        </a>
+        <a href="/cutter.html" class="mobile-nav-item" title="Trim">
+            <i data-lucide="scissors"></i>
+        </a>
+        <a href="/split.html" class="mobile-nav-item" title="Split">
+            <i data-lucide="grid"></i>
+        </a>
+        <a href="/mix.html" class="mobile-nav-item" title="Mixer">
+            <i data-lucide="layers"></i>
+        </a>
+        <a href="/playlist.html" class="mobile-nav-item" title="Playlist">
+            <i data-lucide="list-video"></i>
+        </a>
+    </nav>
+
+    <script src="/static/js/common.js?v=2.0"></script>
+    <script src="/static/js/download.js?v=2.0"></script>
+    <script>lucide.createIcons();</script>
+</body>
+</html>
