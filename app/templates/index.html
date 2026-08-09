@@ -1,0 +1,614 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YTube Studio — YouTube Video Downloader, Trimmer & Splitter</title>
+    <meta name="description" content="YTube Studio is the ultimate all-in-one utility for creators to download, cut, and mix web streams into high-impact edits.">
+    
+    <!-- Favicon -->
+    <link rel="icon" href="/static/img/logo.png" type="image/png">
+
+    <!-- PWA Manifest & Mobile Meta -->
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#ff0000">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="YTube Studio">
+    <link rel="apple-touch-icon" href="/static/img/logo.png">
+    
+    <!-- Fonts (Roboto & Inter) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Icons (Lucide) -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    
+    <!-- App Styles -->
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body class="yt-dark-theme">
+    <div class="app-container">
+        <!-- YouTube Top Navigation Bar -->
+        <header class="yt-navbar">
+            <!-- Left: Brand -->
+            <div class="yt-brand-section">
+                <div class="yt-logo-group">
+
+                    <img src="/static/img/logo.png" alt="YTube Studio Logo" class="yt-logo-img" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                    <div class="brand-icon" style="display:none;">
+                        <i data-lucide="play" class="yt-play-icon"></i>
+                    </div>
+                    <span class="yt-brand-name">YTube Studio</span>
+                    <span class="yt-country-code">IN</span>
+                </div>
+            </div>
+
+            <!-- Center: YouTube Search Bar -->
+            <div class="yt-search-center" id="yt-search-center">
+                <button id="btn-close-mobile-search" class="yt-icon-btn mobile-back-btn hidden" title="Back">
+                    <i data-lucide="arrow-left"></i>
+                </button>
+                <form id="form-fetch-info" class="yt-search-form">
+                    <div class="yt-search-box">
+                        <input type="text" id="input-yt-url" placeholder="Search or paste YouTube link..." autocomplete="off">
+                        <button type="submit" id="btn-fetch-info" class="yt-search-btn" title="Search">
+                            <i data-lucide="search"></i>
+                        </button>
+                    </div>
+                </form>
+                <div id="container-recent-chips" class="recent-chips-bar hidden"></div>
+            </div>
+
+
+
+
+            <!-- Right: Actions & Status -->
+            <div class="yt-nav-actions">
+                <button id="btn-mobile-search-toggle" class="yt-icon-btn mobile-only-btn" title="Search">
+                    <i data-lucide="search"></i>
+                </button>
+                <button id="btn-pwa-install" class="yt-action-pill hidden">
+                    <i data-lucide="smartphone"></i> Install App
+                </button>
+            </div>
+        </header>
+
+        <!-- Main Application Wrapper with Mini Sidebar -->
+        <div class="app-layout-wrapper">
+            <!-- Left Mini Sidebar (Desktop Nav) -->
+            <aside class="yt-mini-sidebar">
+                <button class="mini-nav-item active" id="snav-home" title="Home">
+                    <i data-lucide="home"></i>
+                </button>
+                <button class="mini-nav-item" id="snav-trimmer" title="Video Trimmer">
+                    <i data-lucide="scissors"></i>
+                </button>
+                <button class="mini-nav-item" id="snav-splitter" title="Video Splitter">
+                    <i data-lucide="grid"></i>
+                </button>
+                <button class="mini-nav-item" id="snav-mixer" title="Video & Audio Mixer">
+                    <i data-lucide="layers"></i>
+                </button>
+                <button class="mini-nav-item" id="snav-playlist" title="Playlist Batch">
+                    <i data-lucide="list-video"></i>
+                </button>
+                <button class="mini-nav-item" id="snav-saved" title="Saved Videos">
+                    <i data-lucide="bookmark"></i>
+                </button>
+            </aside>
+
+            <!-- Main Content Area -->
+            <main class="main-content">
+                <!-- YouTube Category Filter Chips Carousel -->
+                <div class="category-carousel-wrapper">
+                    <button class="carousel-arrow-btn prev" id="btn-cat-prev" title="Previous categories">
+                        <i data-lucide="chevron-left"></i>
+                    </button>
+                    <div class="category-chips-nav" id="container-category-chips">
+                        <button class="cat-chip active" data-query="Trending">Trending</button>
+                        <button class="cat-chip" data-query="Trending Movie">Movie</button>
+                        <button class="cat-chip" data-query="Trending Music">Music</button>
+                        <button class="cat-chip" data-query="Trending Dramedy">Dramedy</button>
+                        <button class="cat-chip" data-query="Trending Live">Live</button>
+                        <button class="cat-chip" data-query="Trending Mixes">Mixes</button>
+                        <button class="cat-chip" data-query="Trending Animated films 4k">Animated films</button>
+                        <button class="cat-chip" data-query="Trending T-Series">T-Series</button>
+                        <button class="cat-chip" data-query="Trending cinema">cinema</button>
+                        <button class="cat-chip" data-query="Trending Indian pop music">Indian pop music</button>
+                        <button class="cat-chip" data-query="Trending Dubbing movies">Dubbing</button>
+                        <button class="cat-chip" data-query="Trending Romantic Music">Romantic Music</button>
+                        <button class="cat-chip" data-query="TrendingAsian music">Asian music</button>
+                        <button class="cat-chip" data-query="Trending Lessons">Lessons</button>
+                        <button class="cat-chip" data-query="saved">Saved</button>
+                    </div>
+                    <button class="carousel-arrow-btn next" id="btn-cat-next" title="Next categories">
+                        <i data-lucide="chevron-right"></i>
+                    </button>
+                </div>
+
+
+
+                <!-- Home Video Cards Grid (3 Columns) -->
+                <div id="container-home-grid" class="home-video-grid hidden"></div>
+
+                <!-- Active Job Progress Bar -->
+            <div id="progress-container" class="progress-container hidden">
+                <div class="progress-label">
+                    <span id="txt-progress-status">Downloading video...</span>
+                    <span id="txt-progress-percent">0%</span>
+                </div>
+                <div class="progress-track">
+                    <div id="progress-fill" class="progress-fill"></div>
+                </div>
+            </div>
+
+            <!-- Skeleton / Loading State -->
+            <div id="loader-video-info" class="card loader-card hidden">
+                <div class="spinner"></div>
+                <p>Fetching video from YouTube...</p>
+            </div>
+
+            <!-- Tab 1: YouTube Downloader Page -->
+            <section id="tab-downloader" class="tab-panel active">
+                <div id="card-video-info" class="card video-info-card hidden">
+
+
+                    <div class="video-layout-grid">
+                        <!-- Left Column: Main Video Player & Details (72% width) -->
+                        <div class="video-main-display">
+                            <!-- Top: Video Player Preview -->
+                            <div class="thumbnail-wrapper full-width-player">
+                                <iframe id="iframe-player" src="" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen class="hidden"></iframe>
+                                <img id="img-thumbnail" src="" alt="YouTube Video Thumbnail">
+                                <button id="btn-play-preview" class="play-overlay-btn" title="Play Video Preview">
+                                    <i data-lucide="play"></i>
+                                </button>
+                                <span id="badge-duration" class="duration-badge">00:00</span>
+                            </div>
+
+                            <!-- Bottom: Video Title, Channel Subscribe Bar, Action Pills & Collapsible Description -->
+                            <div class="video-meta-block">
+                                <h1 id="txt-video-title" class="video-main-title">Video Title Placeholder</h1>
+                                
+                                <div class="video-meta-bar">
+                                    <div class="channel-info">
+                                        <div class="channel-avatar-icon">
+                                            <i data-lucide="play-circle" style="color: var(--brand-orange); width: 24px; height: 24px;"></i>
+                                        </div>
+                                        <div class="channel-text">
+                                            <strong id="txt-uploader" class="channel-name">Channel Name</strong>
+                                            <div id="txt-subscribers" class="channel-subscribers-text">Subscribers</div>
+                                        </div>
+                                        <button class="yt-subscribe-btn">Subscribe</button>
+                                    </div>
+
+                                    <!-- Action Bar: Like, Share, Download, Trim, Split -->
+                                    <div class="yt-action-bar">
+                                        <div class="yt-like-dislike-pill">
+                                            <button id="btn-like-video" class="pill-left-btn" title="Like on YouTube">
+                                                <i data-lucide="thumbs-up"></i>
+                                                <span id="txt-like-count">Like</span>
+                                            </button>
+                                            <span class="pill-divider">|</span>
+                                            <button class="pill-right-btn" title="Dislike">
+                                                <i data-lucide="thumbs-down"></i>
+                                            </button>
+                                        </div>
+
+                                        <button id="btn-open-download-modal" class="yt-pill-btn yt-download-pill-btn" title="Download Video">
+                                            <i data-lucide="download"></i>
+                                            <!-- <span>Download</span> -->
+                                        </button>
+                                        <button id="btn-quick-trim" class="yt-pill-btn" title="Trim Video">
+                                            <i data-lucide="scissors"></i>
+                                            <!-- <span>Trim</span> -->
+                                        </button>
+                                        <button id="btn-quick-split" class="yt-pill-btn" title="Split Video Parts">
+                                            <i data-lucide="grid"></i>
+                                            <!-- <span>Split</span> -->
+                                        </button>
+                                        <button id="btn-save-video" class="yt-pill-btn" title="Save for Later">
+                                            <i data-lucide="bookmark"></i>
+                                            <span id="txt-save-status">Save</span>
+                                        </button>
+                                        <button id="btn-quick-playlist" class="yt-pill-btn hidden" title="Download Playlist Batch">
+                                            <i data-lucide="list-video"></i>
+                                            <span>Playlist</span>
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <!-- YouTube Expandable Video Description Box -->
+                                <div id="yt-description-box" class="yt-description-box">
+                                    <div class="description-header-stats">
+                                        <span id="txt-views-count">0 views</span>
+                                        <span id="txt-upload-date">Uploaded recently</span>
+                                    </div>
+                                    <div id="txt-video-description" class="description-text collapsed">
+                                        No description available.
+                                    </div>
+                                    <button id="btn-toggle-description" class="btn-more-desc">...more</button>
+                                </div>
+
+                                <!-- YouTube Comments Section -->
+                                <div class="comments-section">
+                                    <div class="comments-header">
+                                        <h3 id="txt-comments-count">0 Comments</h3>
+                                    </div>
+
+                                    <!-- Add Comment Form -->
+                                    <form id="form-add-comment" class="add-comment-form">
+                                        <div class="user-avatar-mini">
+                                            <i data-lucide="user"></i>
+                                        </div>
+                                        <div class="comment-input-group">
+                                            <input type="text" id="input-comment-text" placeholder="Add a comment..." required autocomplete="off">
+                                            <div class="comment-form-actions">
+                                                <button type="submit" id="btn-submit-comment" class="yt-download-btn btn-comment-submit">Comment</button>
+                                            </div>
+                                        </div>
+                                    </form>
+
+                                    <!-- Comments List -->
+                                    <div id="container-comments-list" class="comments-list"></div>
+                                </div>
+                            </div>
+                        </div>
+
+
+                        <!-- Right Column: More Videos / Up Next Sidebar (28% width) -->
+                        <aside class="more-videos-sidebar">
+                            <div class="sidebar-header">
+                                <i data-lucide="list-video"></i>
+                                <h3>Up next</h3>
+                            </div>
+                            <div id="container-related-videos" class="related-videos-list"></div>
+                        </aside>
+                    </div>
+                </div>
+            </section>            <!-- Tab 2: Playlist Batch Downloader -->
+            <section id="tab-playlist" class="tab-panel">
+                <div class="card">
+                    <h2>YouTube Playlist Batch Downloader</h2>
+                    <p class="subtitle">Enter any YouTube Playlist URL to fetch all videos in the mix queue and download them together.</p>
+
+                    <form id="form-playlist-fetch" class="search-form">
+                        <div class="yt-search-box">
+                            <input type="url" id="input-playlist-url" placeholder="Paste YouTube Playlist link (e.g. https://www.youtube.com/playlist?list=...)" required autocomplete="off">
+                            <button type="submit" id="btn-playlist-fetch" class="yt-search-btn" title="Fetch Playlist">
+                                <i data-lucide="search"></i>
+                            </button>
+                        </div>
+                    </form>
+                </div>
+
+                <div id="loader-playlist-info" class="card loader-card hidden">
+                    <div class="spinner"></div>
+                    <p>Fetching playlist entries from YouTube...</p>
+                </div>
+
+                <div id="card-playlist-info" class="card hidden">
+                    <div class="playlist-header-row">
+                        <div>
+                            <h3 id="txt-playlist-title">Playlist Title</h3>
+                            <p id="txt-playlist-count" class="subtitle">0 items found</p>
+                        </div>
+                        <button id="btn-start-playlist-download" class="yt-download-btn">
+                            <i data-lucide="download"></i>
+                            <span>Download All Batch</span>
+                        </button>
+                    </div>
+
+                    <div id="container-playlist-items" class="playlist-items-grid"></div>
+                </div>
+            </section>
+
+            <!-- Tab 3: Trimmer -->
+            <section id="tab-trimmer" class="tab-panel">
+                <div class="card">
+                    <h2>YouTube Video Trimmer</h2>
+                    <p class="subtitle">Select a downloaded video to preview and extract precise video clips.</p>
+
+                    <!-- Downloaded Media Selector Grid -->
+                    <div class="media-library-section">
+                        <h3>Select Downloaded Video to Trim:</h3>
+                        <div id="container-trim-media-list" class="media-library-grid">
+                            <p class="empty-library-msg">No downloaded videos yet. Download a video in the Downloader tab first!</p>
+                        </div>
+                    </div>
+
+                    <!-- HTML5 Video Preview Player -->
+                    <div id="wrapper-trim-preview" class="media-player-wrapper hidden">
+                        <video id="player-trim-preview" controls class="media-preview-player"></video>
+                    </div>
+
+                    <form id="form-trim-video" class="editor-form">
+                        <div class="form-group">
+                            <label for="input-trim-filepath">Target File Path:</label>
+                            <input type="text" id="input-trim-filepath" placeholder="Select a video above or paste file path" required class="custom-select">
+                        </div>
+                        
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="input-trim-start">Start Time (HH:MM:SS):</label>
+                                <input type="text" id="input-trim-start" placeholder="00:00:00" value="00:00:00" required class="custom-select">
+                            </div>
+                            <div class="form-group">
+                                <label for="input-trim-end">End Time (HH:MM:SS):</label>
+                                <input type="text" id="input-trim-end" placeholder="00:01:30" required class="custom-select">
+                            </div>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="select-trim-format">Output Container / Format:</label>
+                                <select id="select-trim-format" class="custom-select">
+                                    <option value="mp4">MP4 Video (Standard H.264)</option>
+                                    <option value="webm">WebM Video (VP9)</option>
+                                    <option value="mkv">MKV Container</option>
+                                    <option value="mp3">MP3 Audio Stream</option>
+                                    <option value="wav">WAV Lossless Audio</option>
+                                    <option value="aac">AAC Audio Stream</option>
+                                </select>
+                            </div>
+                            <div class="form-group toggle-group">
+                                <label>Frame-Exact Re-encoding:</label>
+                                <label class="switch-label">
+                                    <input type="checkbox" id="chk-trim-accurate">
+                                    <span class="switch-text">H.264 Accurate Re-encode</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <button type="submit" id="btn-execute-trim" class="yt-download-btn">
+                            <i data-lucide="scissors"></i>
+                            <span>Trim Selected Clip</span>
+                        </button>
+                    </form>
+                </div>
+            </section>
+
+            <!-- Tab 4: Splitter -->
+            <section id="tab-splitter" class="tab-panel">
+                <div class="card">
+                    <h2>YouTube Video Part Splitter</h2>
+                    <p class="subtitle">Select a downloaded video to split into equal segment lengths automatically.</p>
+
+                    <!-- Downloaded Media Selector Grid -->
+                    <div class="media-library-section">
+                        <h3>Select Downloaded Video to Split:</h3>
+                        <div id="container-split-media-list" class="media-library-grid">
+                            <p class="empty-library-msg">No downloaded videos yet. Download a video in the Downloader tab first!</p>
+                        </div>
+                    </div>
+
+                    <!-- HTML5 Video Preview Player -->
+                    <div id="wrapper-split-preview" class="media-player-wrapper hidden">
+                        <video id="player-split-preview" controls class="media-preview-player"></video>
+                    </div>
+
+                    <form id="form-split-video" class="editor-form">
+                        <div class="form-group">
+                            <label for="input-split-filepath">Target File Path:</label>
+                            <input type="text" id="input-split-filepath" placeholder="Select a video above or paste file path" required class="custom-select">
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="input-split-parts">Number of Equal Parts:</label>
+                                <input type="number" id="input-split-parts" min="2" max="20" value="2" required class="custom-select">
+                            </div>
+                            <div class="form-group">
+                                <label for="input-split-duration">Total Duration (in seconds):</label>
+                                <input type="number" id="input-split-duration" placeholder="e.g. 300" required class="custom-select">
+                            </div>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="select-split-format">Output Format:</label>
+                                <select id="select-split-format" class="custom-select">
+                                    <option value="mp4">MP4 Video</option>
+                                    <option value="webm">WebM Video</option>
+                                    <option value="mkv">MKV Video</option>
+                                    <option value="mp3">MP3 Audio</option>
+                                    <option value="wav">WAV Audio</option>
+                                </select>
+                            </div>
+                            <div class="form-group toggle-group">
+                                <label>Frame-Exact Re-encoding:</label>
+                                <label class="switch-label">
+                                    <input type="checkbox" id="chk-split-accurate">
+                                    <span class="switch-text">H.264 Accurate Re-encode</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <button type="submit" id="btn-execute-split" class="yt-download-btn">
+                            <i data-lucide="grid"></i>
+                            <span>Split Video Parts</span>
+                        </button>
+                    </form>
+                </div>
+            </section>
+
+
+            <!-- Tab 5: Mixer -->
+            <section id="tab-mixer" class="tab-panel">
+                <div class="card">
+                    <h2>YouTube Video & Audio Mixer</h2>
+                    <p class="subtitle">Select 2 or more downloaded clips from your media library to merge and mix into a single video file.</p>
+
+                    <!-- Downloaded Media Selector Grid for Mixing -->
+                    <div class="media-library-section">
+                        <h3>Select Clips to Mix (Click to select multiple):</h3>
+                        <div id="container-mix-media-list" class="media-library-grid">
+                            <p class="empty-library-msg">No downloaded videos yet. Download videos in the Downloader tab first!</p>
+                        </div>
+                    </div>
+
+                    <form id="form-mix-video" class="editor-form">
+                        <div class="form-group">
+                            <label>Selected Clips Queue:</label>
+                            <div id="wrapper-mix-selected-queue" class="mix-queue-box">
+                                <p class="empty-library-msg">No clips selected yet. Click cards above to add to mix queue.</p>
+                            </div>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="select-mix-format">Output Format:</label>
+                                <select id="select-mix-format" class="custom-select">
+                                    <option value="mp4">MP4 Video (H.264)</option>
+                                    <option value="webm">WebM Video (VP9)</option>
+                                    <option value="mkv">MKV Container</option>
+                                    <option value="mp3">MP3 Audio Stream</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <button type="submit" id="btn-execute-mix" class="yt-download-btn">
+                            <i data-lucide="layers"></i>
+                            <span>Merge & Mix Selected Clips</span>
+                        </button>
+                    </form>
+                </div>
+            </section>
+
+            <!-- Download Quality Selection Modal -->
+            <div id="modal-quality-select" class="modal-overlay hidden">
+                <div class="modal-card">
+                    <div class="modal-header">
+                        <h3>Choose Quality & Format</h3>
+                        <button id="btn-close-quality-modal" class="btn-icon-close">&times;</button>
+                    </div>
+
+                    <div class="modal-body">
+                        <div class="media-type-toggle">
+                            <label class="toggle-option active">
+                                <input type="radio" name="media_type" value="video" id="radio-media-video" checked>
+                                <i data-lucide="video"></i> Video (MP4)
+                            </label>
+                            <label class="toggle-option">
+                                <input type="radio" name="media_type" value="audio" id="radio-media-audio">
+                                <i data-lucide="music"></i> Audio Only (MP3)
+                            </label>
+                        </div>
+
+                        <div class="quality-select-wrapper" id="wrapper-video-quality">
+                            <label for="select-video-quality">Quality (Auto-detected for your connection):</label>
+                            <select id="select-video-quality" class="custom-select"></select>
+                        </div>
+                    </div>
+
+                    <div class="modal-footer">
+                        <button id="btn-start-download" class="yt-download-btn btn-full">
+                            <i data-lucide="download"></i>
+                            <span>Start Download</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+
+        <!-- Application Footer -->
+        <footer class="app-footer">
+            <div class="footer-container">
+                <div class="footer-top-row">
+                    <div class="footer-brand-info">
+                        <div class="footer-logo">
+                            <img src="/static/img/logo.png" alt="YTube Studio Logo" class="yt-logo-img" onerror="this.style.display='none'; this.nextElementSibling.style.display='inline-flex';">
+                            <div class="brand-icon" style="display:none;">
+                                <i data-lucide="play" class="yt-play-icon"></i>
+                            </div>
+                            <strong>YTube Studio</strong>
+                        </div>
+                        <p class="footer-desc">Ultimate web stream downloader, video cutter, and audio batch trimmer tool inspired by YouTube for high-impact media editing.</p>
+                    </div>
+                    <div class="footer-dev-credit">
+                        <p class="dev-line">Developed with <span class="heart-icon">❤️</span> in <strong>India</strong></p>
+                        <p class="author-name">By <strong>Maroti Uppe</strong> <span class="role-badge">(Software Developer)</span></p>
+                    </div>
+                </div>
+                <div class="footer-bottom-row">
+                    <div class="footer-copyright">
+                        © 2026 <strong>YTube Studio</strong>. All rights reserved.
+                    </div>
+                    <div class="footer-tech-badges">
+                        <span>FastAPI Engine</span>
+                        <span>•</span>
+                        <span>YouTube Inspired UI</span>
+                        <span>•</span>
+                        <span>PWA Enabled</span>
+                    </div>
+                </div>
+            </div>
+        </footer>
+
+        <!-- Toast Notifications -->
+        <div id="toast-container" class="toast-container"></div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="/static/js/app.js"></script>
+    <script>
+        lucide.createIcons();
+
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js')
+                    .then(reg => console.log('PWA ServiceWorker registered:', reg.scope))
+                    .catch(err => console.log('PWA ServiceWorker failed:', err));
+            });
+        }
+
+        let deferredPrompt;
+        const installBtn = document.getElementById('btn-pwa-install');
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            if (installBtn) installBtn.classList.remove('hidden');
+        });
+
+        if (installBtn) {
+            installBtn.addEventListener('click', async () => {
+                if (deferredPrompt) {
+                    deferredPrompt.prompt();
+                    const { outcome } = await deferredPrompt.userChoice;
+                    if (outcome === 'accepted') {
+                        installBtn.classList.add('hidden');
+                    }
+                    deferredPrompt = null;
+                }
+            });
+        }
+    </script>
+
+    <!-- Mobile Bottom Navigation Bar -->
+    <nav class="mobile-bottom-nav">
+        <button class="mobile-nav-item active" id="mnav-home" title="Home">
+            <i data-lucide="home"></i>
+        </button>
+        <button class="mobile-nav-item" id="mnav-trimmer" title="Trim">
+            <i data-lucide="scissors"></i>
+        </button>
+        <button class="mobile-nav-item" id="mnav-splitter" title="Split">
+            <i data-lucide="grid"></i>
+        </button>
+        <button class="mobile-nav-item" id="mnav-mixer" title="Mixer">
+            <i data-lucide="layers"></i>
+        </button>
+        <button class="mobile-nav-item" id="mnav-playlist" title="Playlist">
+            <i data-lucide="list-video"></i>
+        </button>
+        <button class="mobile-nav-item" id="mnav-saved" title="Saved">
+            <i data-lucide="bookmark"></i>
+        </button>
+    </nav>
+</body>
+</html>
+
