@@ -27,16 +27,15 @@ class YouTubeService:
         opts: Dict[str, Any] = {
             'quiet': True,
             'no_warnings': True,
-            'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, Gecko) Chrome/124.0.0.0 Safari/537.36',
-            'extractor_args': {
-                'youtube': {
-                    'player_client': ['android_vr', 'tvhtml5', 'ios', 'mweb'],
-                }
-            },
             'nocheckcertificate': True,
             'ignoreerrors': False,
             'logtostderr': False,
             'no_color': True,
+            'http_headers': {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36',
+                'Accept-Language': 'en-US,en;q=0.9',
+                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+            },
         }
 
         # Check for cookies file or environment variables
@@ -46,12 +45,21 @@ class YouTubeService:
         elif os.environ.get('YOUTUBE_COOKIES'):
             temp_cookies = os.path.join(DOWNLOAD_DIR, 'youtube_cookies.txt')
             try:
+                cookie_content = os.environ['YOUTUBE_COOKIES'].strip()
+                if not cookie_content.startswith('# Netscape'):
+                    cookie_content = '# Netscape HTTP Cookie File\n' + cookie_content
                 with open(temp_cookies, 'w', encoding='utf-8') as f:
-                    f.write(os.environ['YOUTUBE_COOKIES'])
+                    f.write(cookie_content)
                 opts['cookiefile'] = temp_cookies
             except Exception as e:
                 logger.warning(f"Failed to save YOUTUBE_COOKIES env var: {e}")
-
+        else:
+            opts['extractor_args'] = {
+                'youtube': {
+                    'player_client': ['tv_embedded', 'web_embedded', 'android', 'ios'],
+                    'skip_webpage': ['True'],
+                }
+            }
 
         return opts
 
