@@ -1,8 +1,36 @@
-# YTube Video DCM ⚡✂️🎛️
+# YTube Studio ⚡✂️🎛️
 
-**YTube Video DCM** is an intuitive, all-in-one web utility inspired by YouTube for content creators, video editors, and media enthusiasts. It enables users to search, stream, download, cut, split, and mix YouTube video and audio content seamlessly within a single responsive web interface.
+[![Python Version](https://img.shields.io/badge/Python-3.11-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://python.org)
+[![FastAPI Framework](https://img.shields.io/badge/FastAPI-0.109-009688?style=for-the-badge&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
+[![Render Deployed](https://img.shields.io/badge/Render-Deployed-46E3B7?style=for-the-badge&logo=render&logoColor=white)](https://render.com)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge)](LICENSE)
+
+![YTube Studio Social Preview](app/static/img/ytube_studio_github_preview_.png)
+
+**YTube Studio** is an intuitive, all-in-one web utility inspired by YouTube for content creators, video editors, and media enthusiasts. It enables users to search, stream, download, cut, split, and mix YouTube video and audio content seamlessly within a single responsive web interface.
 
 Built for speed, ultra-responsiveness, and modern user experience, this application handles everything from pulling raw web streams and parsing high-definition resolutions to frame-exact trimming, equal episode splitting, and multi-clip concatenation.
+
+---
+
+## ⚡ Quick Feature Overview
+
+| Feature | Description | Key Capabilities |
+| :--- | :--- | :--- |
+| 📥 **Video Downloader** | Search & download YouTube media | Up to 1080p video, 192kbps MP3 audio, playlist support |
+| ✂️ **Video Trimmer** | Cut specific video clips | Fast lossless copy or frame-exact H.264 re-encoding |
+| 🧩 **Video Splitter** | Partition long videos into segments | Equal part division with automatic ZIP archive export |
+| 🎛️ **Media Mixer** | Combine multiple video/audio clips | Merge clips into MP4, WebM, MKV, or MP3 |
+| 📱 **PWA Support** | Installable web app | Service Worker offline caching & YouTube dark/light theme |
+
+---
+
+## 📋 Table of Contents
+- [Architecture & Tech Stack](#%EF%B8%8F-application-architecture--tech-stack)
+- [Repository Structure](#-repository--project-structure)
+- [Features Deep Dive](#-detailed-application-features)
+- [Quick Start Guide](#-quick-start-guide)
+- [Deployment on Render](#step-3-deploy-to-rendercom)
 
 ---
 
@@ -94,25 +122,6 @@ YT-Studio/
 
 ---
 
-## 🛠️ REST API Specification
-
-| Endpoint | Method | Payload / Params | Description |
-| :--- | :--- | :--- | :--- |
-| `GET /` | `GET` | None | Serves the main Single-Page Application HTML. |
-| `GET /health` | `GET` | None | Health check endpoint for server and FFmpeg binary status. |
-| `POST /api/info` | `POST` | `{ "url": "..." }` | Extracts video metadata, formats, and related videos. |
-| `POST /api/playlist/info` | `POST` | `{ "url": "...", "max_videos": 10 }` | Extracts playlist items metadata. |
-| `POST /api/download` | `POST` | `{ "url": "...", "media_type": "video", "quality": "1080p" }` | Dispatches background download job (returns `job_id`). |
-| `POST /api/playlist/download` | `POST` | `{ "url": "...", "media_type": "video", "quality": "best" }` | Dispatches background playlist download job (returns `job_id`). |
-| `POST /api/trim` | `POST` | `{ "file_path": "...", "start_time": "00:01:00", "end_time": "00:03:00" }` | Dispatches background trimming job (returns `job_id`). |
-| `POST /api/split` | `POST` | `{ "file_path": "...", "part_count": 3, "total_duration": 600 }` | Dispatches background splitting job into $N$ parts. |
-| `POST /api/mix` | `POST` | `{ "file_paths": ["...", "..."], "output_format": "mp4" }` | Dispatches background media concatenation job for multiple clips. |
-| `GET /api/jobs/{job_id}` | `GET` | None | Returns live status (`pending`, `processing`, `completed`, `failed`) and progress. |
-| `POST /api/session/close` | `POST` | `{ "session_id": "..." }` | Purges temporary server files for a closing user session. |
-| `GET /api/download-file` | `GET` | `?path=...` | Streams or downloads a processed file to client device. |
-
----
-
 ## 🚀 Quick Start Guide
 
 ### Prerequisites
@@ -142,5 +151,7 @@ Open `http://localhost:8000` in your web browser.
 ## 👤 Developer & Attribution
 
 Developed with ❤️ in **India**  
-By **Maroti Uppe** (Software Developer)  
-© 2026 **YTube Video DCM**. All rights reserved.
+- **Developer**: **Maroti Uppe** (Software Developer)  
+- **Idea & Concept**: **Shubham Pawar** (Software Developer)  
+
+© 2026 **YTube Studio**. All rights reserved.
