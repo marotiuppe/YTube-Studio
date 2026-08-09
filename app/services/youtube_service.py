@@ -27,12 +27,17 @@ class YouTubeService:
         opts: Dict[str, Any] = {
             'quiet': True,
             'no_warnings': True,
-            'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, Gecko) Chrome/124.0.0.0 Safari/537.36',
+            'user_agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, Gecko) Chrome/124.0.0.0 Safari/537.36',
             'extractor_args': {
                 'youtube': {
-                    'player_client': ['tv', 'tvhtml5', 'mweb', 'ios', 'android', 'web'],
+                    'player_client': ['android', 'ios', 'mweb', 'tv'],
+                    'player_skip': ['webpage', 'configs', 'js'],
                 }
-            }
+            },
+            'nocheckcertificate': True,
+            'ignoreerrors': False,
+            'logtostderr': False,
+            'no_color': True,
         }
 
         # Check for cookies file or environment variables
