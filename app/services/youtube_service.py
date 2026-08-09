@@ -27,14 +27,15 @@ class YouTubeService:
         opts: Dict[str, Any] = {
             'quiet': True,
             'no_warnings': True,
-            'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, Gecko) Chrome/122.0.0.0 Safari/537.36',
+            'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, Gecko) Chrome/124.0.0.0 Safari/537.36',
             'extractor_args': {
                 'youtube': {
-                    'player_client': ['mweb', 'ios', 'android', 'web'],
+                    'player_client': ['tv', 'tvhtml5', 'mweb', 'ios', 'android', 'web'],
                 }
             }
         }
 
+        # Check for cookies file or environment variables
         cookies_path = os.environ.get('YOUTUBE_COOKIES_PATH') or os.environ.get('COOKIES_PATH')
         if cookies_path and os.path.isfile(cookies_path):
             opts['cookiefile'] = cookies_path
@@ -46,6 +47,9 @@ class YouTubeService:
                 opts['cookiefile'] = temp_cookies
             except Exception as e:
                 logger.warning(f"Failed to save YOUTUBE_COOKIES env var: {e}")
+        else:
+            # Fallback to local browser cookies if available on user machine
+            opts['cookiesfrombrowser'] = ('chrome', 'edge', 'firefox', 'brave')
 
         return opts
 
