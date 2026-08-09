@@ -47,9 +47,7 @@ class YouTubeService:
                 opts['cookiefile'] = temp_cookies
             except Exception as e:
                 logger.warning(f"Failed to save YOUTUBE_COOKIES env var: {e}")
-        else:
-            # Fallback to local browser cookies if available on user machine
-            opts['cookiesfrombrowser'] = ('chrome', 'edge', 'firefox', 'brave')
+
 
         return opts
 
