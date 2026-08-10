@@ -38,10 +38,20 @@ class YouTubeService:
             },
         }
 
-        # Check for cookies file or environment variables
+        # Priority 1: Use cookies from browser (Chrome/Edge/Firefox) - most reliable
+        browser = os.environ.get('YOUTUBE_COOKIES_BROWSER', 'chrome')
+        try:
+            opts['cookies_from_browser'] = (browser, None, None, None)
+            logger.info(f"Using cookies from browser: {browser}")
+        except Exception as e:
+            logger.warning(f"Failed to load cookies from browser '{browser}': {e}")
+
+        # Priority 2: Explicit cookies file path
         cookies_path = os.environ.get('YOUTUBE_COOKIES_PATH') or os.environ.get('COOKIES_PATH')
         if cookies_path and os.path.isfile(cookies_path):
             opts['cookiefile'] = cookies_path
+            logger.info(f"Using cookies file: {cookies_path}")
+        # Priority 3: Cookies from environment variable
         elif os.environ.get('YOUTUBE_COOKIES'):
             temp_cookies = os.path.join(DOWNLOAD_DIR, 'youtube_cookies.txt')
             try:
@@ -51,15 +61,22 @@ class YouTubeService:
                 with open(temp_cookies, 'w', encoding='utf-8') as f:
                     f.write(cookie_content)
                 opts['cookiefile'] = temp_cookies
+                logger.info("Using cookies from YOUTUBE_COOKIES env var")
             except Exception as e:
                 logger.warning(f"Failed to save YOUTUBE_COOKIES env var: {e}")
-        else:
-            opts['extractor_args'] = {
-                'youtube': {
-                    'player_client': ['tv_embedded', 'web_embedded', 'android', 'ios'],
-                    'skip_webpage': ['True'],
-                }
+
+        # Always set robust extractor args for YouTube
+        opts['extractor_args'] = {
+            'youtube': {
+                'player_client': ['tv_embedded', 'web_embedded', 'android', 'ios', 'mweb'],
+                'skip_webpage': ['True'],
+                'player_skip': ['configs', 'webpage'],
             }
+        }
+
+        # Additional options to reduce bot detection
+        opts['sleep_interval'] = 1
+        opts['max_sleep_interval'] = 3
 
         return opts
 
@@ -74,185 +91,210 @@ class YouTubeService:
         is_url = url_or_query.startswith(('http://', 'https://')) or 'youtu' in url_or_query
         target = url_or_query if is_url else f"ytsearch12:{url_or_query}"
 
-        ydl_opts = cls._get_base_ydl_opts()
-        ydl_opts.update({
-            'skip_download': True,
-            'getcomments': False,
-            'socket_timeout': 10,
-        })
+        # Try multiple extractor configurations for robustness
+        extractor_configs = [
+            # Config 1: Default (with browser cookies if available)
+            {},
+            # Config 2: Force tv_embedded client
+            {'extractor_args': {'youtube': {'player_client': ['tv_embedded'], 'skip_webpage': ['True']}}},
+            # Config 3: Android client
+            {'extractor_args': {'youtube': {'player_client': ['android'], 'skip_webpage': ['True']}}},
+            # Config 4: iOS client
+            {'extractor_args': {'youtube': {'player_client': ['ios'], 'skip_webpage': ['True']}}},
+            # Config 5: Web embedded
+            {'extractor_args': {'youtube': {'player_client': ['web_embedded'], 'skip_webpage': ['True']}}},
+        ]
 
-        try:
-            with yt_dlp.YoutubeDL(ydl_opts) as ydl: 
-                info = ydl.extract_info(target, download=False)
-                if not info:
-                    raise ValueError("Could not retrieve video information.")
-                
-                # If search query, extract top result and populate remaining as related
-                related_search_entries = []
-                if 'entries' in info and info['entries']:
-                    entries = [e for e in info['entries'] if e and e.get('id')]
-                    if not entries:
-                        raise ValueError("No matching videos found for search query.")
-                    
-                    # Find first available valid entry
-                    first_valid = None
-                    for idx, entry in enumerate(entries):
-                        # Skip entries marked unavailable or without title
-                        if entry.get('title') and entry.get('title') != '[Video unavailable]':
-                            first_valid = entry
-                            related_search_entries = entries[idx+1:]
-                            break
-                    
-                    if not first_valid:
-                        info = entries[0]
-                        related_search_entries = entries[1:]
-                    else:
-                        info = first_valid
+        last_error = None
+        for idx, extra_config in enumerate(extractor_configs):
+            ydl_opts = cls._get_base_ydl_opts()
+            if extra_config:
+                # Merge extractor args
+                if 'extractor_args' in extra_config:
+                    ydl_opts.setdefault('extractor_args', {}).update(extra_config['extractor_args'])
+            
+            ydl_opts.update({
+                'skip_download': True,
+                'getcomments': False,
+                'socket_timeout': 15,
+            })
 
-                # Extract real YouTube comments
-                raw_comments = info.get('comments') or []
-                yt_comments = []
-                for c in raw_comments[:15]:
-                    if c and c.get('text'):
-                        yt_comments.append({
-                            'author': c.get('author') or c.get('author_id') or '@YouTubeUser',
-                            'text': c.get('text'),
-                            'timeAgo': c.get('time_text') or 'recently',
-                            'likes': c.get('like_count') or 0
-                        })
+            try:
+                with yt_dlp.YoutubeDL(ydl_opts) as ydl: 
+                    info = ydl.extract_info(target, download=False)
+                    if not info:
+                        raise ValueError("Could not retrieve video information.")
 
-                video_formats: List[Dict[str, Any]] = []
-                audio_formats: List[Dict[str, Any]] = []
-                formats = info.get('formats', [])
-                seen_resolutions = set()
-                seen_bitrates = set()
-                
-                for f in formats:
-                    format_id = f.get('format_id')
-                    ext = f.get('ext')
-                    vcodec = f.get('vcodec')
-                    acodec = f.get('acodec')
-                    height = f.get('height')
-                    fps = f.get('fps')
-                    filesize = f.get('filesize') or f.get('filesize_approx')
-                    
-                    if vcodec and vcodec != 'none' and height:
-                        res_key = f"{height}p"
-                        if res_key not in seen_resolutions:
-                            seen_resolutions.add(res_key)
-                            video_formats.append({
-                                'format_id': format_id,
-                                'resolution': res_key,
-                                'height': height,
-                                'ext': 'mp4',
-                                'fps': fps,
-                                'filesize': filesize
-                            })
-                    
-                    if (vcodec == 'none' or not vcodec) and acodec and acodec != 'none':
-                        abr = f.get('abr') or f.get('tbr') or 128
-                        abr_int = int(abr)
-                        abr_key = f"{abr_int}kbps"
-                        if abr_key not in seen_bitrates:
-                            seen_bitrates.add(abr_key)
-                            audio_formats.append({
-                                'format_id': format_id,
-                                'bitrate': abr_key,
-                                'abr': abr_int,
-                                'ext': 'mp3',
-                                'filesize': filesize
+                    # If search query, extract top result and populate remaining as related
+                    related_search_entries = []
+                    if 'entries' in info and info['entries']:
+                        entries = [e for e in info['entries'] if e and e.get('id')]
+                        if not entries:
+                            raise ValueError("No matching videos found for search query.")
+                        
+                        # Find first available valid entry
+                        first_valid = None
+                        for entry_idx, entry in enumerate(entries):
+                            # Skip entries marked unavailable or without title
+                            if entry.get('title') and entry.get('title') != '[Video unavailable]':
+                                first_valid = entry
+                                related_search_entries = entries[entry_idx+1:]
+                                break
+                        
+                        if not first_valid:
+                            info = entries[0]
+                            related_search_entries = entries[1:]
+                        else:
+                            info = first_valid
+
+                    # Extract real YouTube comments
+                    raw_comments = info.get('comments') or []
+                    yt_comments = []
+                    for c in raw_comments[:15]:
+                        if c and c.get('text'):
+                            yt_comments.append({
+                                'author': c.get('author') or c.get('author_id') or '@YouTubeUser',
+                                'text': c.get('text'),
+                                'timeAgo': c.get('time_text') or 'recently',
+                                'likes': c.get('like_count') or 0
                             })
 
-                video_formats.sort(key=lambda x: x['height'], reverse=True)
-                audio_formats.sort(key=lambda x: x['abr'], reverse=True)
+                    video_formats: List[Dict[str, Any]] = []
+                    audio_formats: List[Dict[str, Any]] = []
+                    formats = info.get('formats', [])
+                    seen_resolutions = set()
+                    seen_bitrates = set()
+                    
+                    for f in formats:
+                        format_id = f.get('format_id')
+                        ext = f.get('ext')
+                        vcodec = f.get('vcodec')
+                        acodec = f.get('acodec')
+                        height = f.get('height')
+                        fps = f.get('fps')
+                        filesize = f.get('filesize') or f.get('filesize_approx')
+                        
+                        if vcodec and vcodec != 'none' and height:
+                            res_key = f"{height}p"
+                            if res_key not in seen_resolutions:
+                                seen_resolutions.add(res_key)
+                                video_formats.append({
+                                    'format_id': format_id,
+                                    'resolution': res_key,
+                                    'height': height,
+                                    'ext': 'mp4',
+                                    'fps': fps,
+                                    'filesize': filesize
+                                })
+                        
+                        if (vcodec == 'none' or not vcodec) and acodec and acodec != 'none':
+                            abr = f.get('abr') or f.get('tbr') or 128
+                            abr_int = int(abr)
+                            abr_key = f"{abr_int}kbps"
+                            if abr_key not in seen_bitrates:
+                                seen_bitrates.add(abr_key)
+                                audio_formats.append({
+                                    'format_id': format_id,
+                                    'bitrate': abr_key,
+                                    'abr': abr_int,
+                                    'ext': 'mp3',
+                                    'filesize': filesize
+                                })
 
-                # Build related videos list
-                related_videos = []
-                for entry in related_search_entries:
-                    v_id = entry.get('id')
-                    v_title = entry.get('title')
-                    if v_id and v_title and v_title != '[Video unavailable]':
-                        thumb = entry.get('thumbnail')
-                        if not thumb or isinstance(thumb, list):
-                            thumb = f"https://i.ytimg.com/vi/{v_id}/mqdefault.jpg"
-                        related_videos.append({
-                            'id': v_id,
-                            'title': v_title,
-                            'uploader': entry.get('uploader') or entry.get('channel') or 'YouTube Channel',
-                            'duration': entry.get('duration'),
-                            'thumbnail': thumb,
-                            'url': f"https://www.youtube.com/watch?v={v_id}"
-                        })
+                    video_formats.sort(key=lambda x: x['height'], reverse=True)
+                    audio_formats.sort(key=lambda x: x['abr'], reverse=True)
 
-                if not related_videos:
-                    uploader = info.get('uploader') or info.get('channel') or ''
-                    title = info.get('title') or ''
-                    fallback_query = uploader if uploader else title[:20]
-                    if fallback_query:
-                        try:
-                            rel_opts = {
-                                'quiet': True,
-                                'no_warnings': True,
-                                'skip_download': True,
-                                'extract_flat': 'in_playlist'
-                            }
-                            with yt_dlp.YoutubeDL(rel_opts) as rel_ydl:
-                                rel_info = rel_ydl.extract_info(f"ytsearch10:{fallback_query}", download=False)
-                                for item in (rel_info.get('entries') or []):
-                                    v_id = item.get('id')
-                                    if v_id and v_id != info.get('id') and item.get('title'):
-                                        related_videos.append({
-                                            'id': v_id,
-                                            'title': item.get('title'),
-                                            'uploader': item.get('uploader') or item.get('channel') or 'YouTube Channel',
-                                            'duration': item.get('duration'),
-                                            'thumbnail': f"https://i.ytimg.com/vi/{v_id}/mqdefault.jpg",
-                                            'url': f"https://www.youtube.com/watch?v={v_id}"
-                                        })
-                        except Exception:
-                            pass
+                    # Build related videos list
+                    related_videos = []
+                    for entry in related_search_entries:
+                        v_id = entry.get('id')
+                        v_title = entry.get('title')
+                        if v_id and v_title and v_title != '[Video unavailable]':
+                            thumb = entry.get('thumbnail')
+                            if not thumb or isinstance(thumb, list):
+                                thumb = f"https://i.ytimg.com/vi/{v_id}/mqdefault.jpg"
+                            related_videos.append({
+                                'id': v_id,
+                                'title': v_title,
+                                'uploader': entry.get('uploader') or entry.get('channel') or 'YouTube Channel',
+                                'duration': entry.get('duration'),
+                                'thumbnail': thumb,
+                                'url': f"https://www.youtube.com/watch?v={v_id}"
+                            })
 
-                playlist_id = info.get('playlist_id') or info.get('playlist')
-                playlist_url = info.get('playlist_url') or (f"https://www.youtube.com/playlist?list={playlist_id}" if playlist_id else None)
+                    if not related_videos:
+                        uploader = info.get('uploader') or info.get('channel') or ''
+                        title = info.get('title') or ''
+                        fallback_query = uploader if uploader else title[:20]
+                        if fallback_query:
+                            try:
+                                rel_opts = {
+                                    'quiet': True,
+                                    'no_warnings': True,
+                                    'skip_download': True,
+                                    'extract_flat': 'in_playlist'
+                                }
+                                with yt_dlp.YoutubeDL(rel_opts) as rel_ydl:
+                                    rel_info = rel_ydl.extract_info(f"ytsearch10:{fallback_query}", download=False)
+                                    for item in (rel_info.get('entries') or []):
+                                        v_id = item.get('id')
+                                        if v_id and v_id != info.get('id') and item.get('title'):
+                                            related_videos.append({
+                                                'id': v_id,
+                                                'title': item.get('title'),
+                                                'uploader': item.get('uploader') or item.get('channel') or 'YouTube Channel',
+                                                'duration': item.get('duration'),
+                                                'thumbnail': f"https://i.ytimg.com/vi/{v_id}/mqdefault.jpg",
+                                                'url': f"https://www.youtube.com/watch?v={v_id}"
+                                            })
+                            except Exception:
+                                pass
 
-                raw_date = info.get('upload_date')
-                date_str = ""
-                if raw_date and len(raw_date) == 8:
-                    date_str = f"{raw_date[:4]}-{raw_date[4:6]}-{raw_date[6:]}"
+                    playlist_id = info.get('playlist_id') or info.get('playlist')
+                    playlist_url = info.get('playlist_url') or (f"https://www.youtube.com/playlist?list={playlist_id}" if playlist_id else None)
 
-                sub_count = info.get('channel_follower_count') or info.get('subscriber_count')
+                    raw_date = info.get('upload_date')
+                    date_str = ""
+                    if raw_date and len(raw_date) == 8:
+                        date_str = f"{raw_date[:4]}-{raw_date[4:6]}-{raw_date[6:]}"
 
-                res_data = {
-                    'id': info.get('id'),
-                    'title': info.get('title'),
-                    'description': info.get('description'),
-                    'uploader': info.get('uploader') or info.get('channel'),
-                    'channel_url': info.get('uploader_url') or info.get('channel_url'),
-                    'channel_follower_count': sub_count,
-                    'upload_date': date_str,
-                    'duration': info.get('duration'),
-                    'view_count': info.get('view_count'),
-                    'like_count': info.get('like_count'),
-                    'comment_count': info.get('comment_count'),
-                    'thumbnail': info.get('thumbnail') or (f"https://i.ytimg.com/vi/{info.get('id')}/hqdefault.jpg" if info.get('id') else None),
-                    'url': info.get('webpage_url') or f"https://www.youtube.com/watch?v={info.get('id')}",
-                    'playlist_url': playlist_url,
-                    'video_formats': video_formats,
-                    'audio_formats': audio_formats,
-                    'related_videos': related_videos,
-                    'comments': yt_comments
-                }
-                cache_key = url_or_query.lower()
-                cls._info_cache[cache_key] = res_data
-                if res_data.get('id'):
-                    cls._info_cache[res_data['id'].lower()] = res_data
-                return res_data
+                    sub_count = info.get('channel_follower_count') or info.get('subscriber_count')
 
-
-        except Exception as e:
-            err_str = str(e)
-            logger.error(f"Error fetching YouTube info for {url_or_query}: {e}")
-            raise RuntimeError(err_str.replace("ERROR: [youtube] ", "").strip())
+                    res_data = {
+                        'id': info.get('id'),
+                        'title': info.get('title'),
+                        'description': info.get('description'),
+                        'uploader': info.get('uploader') or info.get('channel'),
+                        'channel_url': info.get('uploader_url') or info.get('channel_url'),
+                        'channel_follower_count': sub_count,
+                        'upload_date': date_str,
+                        'duration': info.get('duration'),
+                        'view_count': info.get('view_count'),
+                        'like_count': info.get('like_count'),
+                        'comment_count': info.get('comment_count'),
+                        'thumbnail': info.get('thumbnail') or (f"https://i.ytimg.com/vi/{info.get('id')}/hqdefault.jpg" if info.get('id') else None),
+                        'url': info.get('webpage_url') or f"https://www.youtube.com/watch?v={info.get('id')}",
+                        'playlist_url': playlist_url,
+                        'video_formats': video_formats,
+                        'audio_formats': audio_formats,
+                        'related_videos': related_videos,
+                        'comments': yt_comments
+                    }
+                    cache_key = url_or_query.lower()
+                    cls._info_cache[cache_key] = res_data
+                    if res_data.get('id'):
+                        cls._info_cache[res_data['id'].lower()] = res_data
+                    return res_data
+                    
+            except Exception as e:
+                last_error = e
+                err_str = str(e)
+                logger.warning(f"Attempt {idx+1}/{len(extractor_configs)} failed: {err_str[:200]}")
+                if idx < len(extractor_configs) - 1:
+                    continue
+                # Last attempt failed, raise error
+                logger.error(f"All attempts failed for {url_or_query}: {e}")
+                raise RuntimeError(err_str.replace("ERROR: [youtube] ", "").strip())
 
 
     @classmethod
